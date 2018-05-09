@@ -7,12 +7,6 @@
 # When all blows are detected, celebrate in some way and reset the count (but increment the set count)
 # When we get to N sets, celebrate in a big way
 
-# Problems to solve
-# a) listening to blowing noise from USB microphone
-# b) detecting absence of blowing noise (need to process to remove background noise)
-# c) visualising blowing noise on Unicorn HAT
-# d) celebration animations(!)
-
 import alsaaudio as aa
 import audioop
 from time import sleep
@@ -98,7 +92,7 @@ def draw(totalblows):
     sets = int(math.floor(totalblows / blows_per_set) - (sides * sets_per_side))
 
     # Clear output area
-    for x in range (4,8):
+    for x in range (2,8):
         for y in range (0,8):
             unicorn.set_pixel(x,y, 0,0,0)
 
@@ -123,16 +117,16 @@ def draw(totalblows):
         else:
             unicorn.set_pixel(6, s, 255, 51, 0)
 
-
-
-
     # Draw the blows
     for s in range(0, blows):
         # Number of blows can be > 7 so we need to
-        if (s < unicorn_height):
+        if (s < 4):
             unicorn.set_pixel(5, s, 255, 255, 255)
+        elif (s >= 4 and s < 8):
+            unicorn.set_pixel(4, s % 4, 255, 255, 255)
         else:
-            unicorn.set_pixel(4, s % unicorn_height, 255, 255, 255)
+            unicorn.set_pixel(3, s % 8, 255, 255, 255)
+
 
     unicorn.show()
 
@@ -165,6 +159,8 @@ def getInterpolatedRGB(r1, g1, b1, r2, g2, b2, min, max, value):
 
     return (rx, gx, bx)
 
+
+dur = 0
 while True:
         # Read data from device
         l,data = data_in.read()
@@ -188,17 +184,43 @@ while True:
                             queue_total = queue_total + scaled_vol - old_vol
                             # Get average value
                             scaled_vol_average = queue_total / 19
-                            # Display the current value from 0-7 on the unicorn HAT
                             currentTime = time.time()
 
 #                            (r, g, b) = getInterpolatedRGB(0, 0, 0, 255, 255, 255, 0, 2, currentBlowDuration)
 #                            print r, g, b, currentBlowDuration
+
+
+                            # Display the current value from 0-7 on the unicorn HAT
                             for i in range(0, scaled_vol_average+1):
                                 unicorn.set_pixel(0, i, 0, 255, 0)
                             # Clear any previously set pixels (if volume is going down)
                             if (lastScaledVolAverage > scaled_vol_average):
                                 for y in range(scaled_vol_average+1, lastScaledVolAverage+1):
                                     unicorn.set_pixel(0, y, 0, 0, 0)
+                            # Clear out the previous blow duration (if required)
+                            if (currentBlowDuration < dur):
+                                for i in range (0, 6):
+                                    unicorn.set_pixel(7-i, 7, 0, 0, 0)
+                            dur = currentBlowDuration;
+                            if dur > 3:
+                                dur = 3
+                            scaled_dur = int(dur * 2)
+                            # Display the current blow duration
+                            for i in range (0, scaled_dur):
+                                if i == 0:
+                                    (r,g,b) = (255, 0, 0)
+                                elif i == 1:
+                                    (r,g,b) = (128, 128, 0)
+                                elif i == 2:
+                                    (r, g, b) = (128, 255, 0)
+                                elif i == 3:
+                                    (r, g, b) = (0, 255, 0)
+                                elif i == 4:
+                                    (r, g, b) = (128, 128, 0)
+                                elif i == 5:
+                                    (r, g, b) = (255, 0, 0)
+
+                                unicorn.set_pixel(7-i, 7, r, g, b)
                             unicorn.show()
                             lastScaledVolAverage = scaled_vol_average
 
@@ -223,8 +245,8 @@ while True:
                                     # Unicorn scroll has its own idea about the correct orientation, so change back to 0
                                     unicorn.rotation(0)
                                 draw(blowcount)
-                            elif (blowing == True):
-                                currentBlowDuration = currentTime - startBlowingTime
+                            if (blowing == True):
+                                currentBlowDuration = time.time() - startBlowingTime
 
 
 
